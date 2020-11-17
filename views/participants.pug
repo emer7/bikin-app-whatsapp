@@ -1,0 +1,6 @@
+extends layout
+
+block content
+  ul
+  each participant in participants
+    li= participant.name || participant.pushname

@@ -4,37 +4,84 @@
  * Module dependencies.
  */
 
-var app = require('../app');
-var debug = require('debug')('whatsapp:server');
-var http = require('http');
+const appFactory = require('../app');
+const debug = require('debug')('whatsapp:server');
+const http = require('http');
 
-/**
- * Get port from environment and store in Express.
- */
+const fs = require('fs');
+const path = require('path');
+const qrcode = require('qrcode-terminal');
+const { Client } = require('whatsapp-web.js');
 
-var port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+const SESSION_FILE_PATH = path.join(__dirname, '/../session.json');
 
-/**
- * Create HTTP server.
- */
+let sessionData;
+if (fs.existsSync(SESSION_FILE_PATH)) {
+  sessionData = require(SESSION_FILE_PATH);
+}
 
-var server = http.createServer(app);
+const whatsAppClient = new Client({
+  session: sessionData,
+});
+const app = appFactory(whatsAppClient);
 
-/**
- * Listen on provided port, on all network interfaces.
- */
+whatsAppClient.on('qr', qr => {
+  qrcode.generate(qr, { small: true });
+});
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+whatsAppClient.on('authenticated', session => {
+  console.log('Authenticated');
+  sessionData = session;
+  fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function (err) {
+    if (err) {
+      console.error(err);
+    }
+  });
+});
+
+whatsAppClient.on('change_state', state => {
+  console.log(state);
+});
+
+whatsAppClient.on('auth_failure', message => {
+  console.log(message);
+});
+
+whatsAppClient.on('disconnected', state => {
+  console.log(state);
+});
+
+whatsAppClient.on('ready', () => {
+  /**
+   * Get port from environment and store in Express.
+   */
+
+  const port = normalizePort(process.env.PORT || '3000');
+  app.set('port', port);
+
+  /**
+   * Create HTTP server.
+   */
+
+  const server = http.createServer(app);
+
+  /**
+   * Listen on provided port, on all network interfaces.
+   */
+
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening(server));
+});
+
+whatsAppClient.initialize();
 
 /**
  * Normalize a port into a number, string, or false.
  */
 
-function normalizePort(val) {
-  var port = parseInt(val, 10);
+const normalizePort = val => {
+  const port = parseInt(val, 10);
 
   if (isNaN(port)) {
     // named pipe
@@ -47,20 +94,18 @@ function normalizePort(val) {
   }
 
   return false;
-}
+};
 
 /**
  * Event listener for HTTP server "error" event.
  */
 
-function onError(error) {
+const onError = error => {
   if (error.syscall !== 'listen') {
     throw error;
   }
 
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
+  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -75,16 +120,14 @@ function onError(error) {
     default:
       throw error;
   }
-}
+};
 
 /**
  * Event listener for HTTP server "listening" event.
  */
 
-function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
+const onListening = server => () => {
+  const addr = server.address();
+  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
-}
+};

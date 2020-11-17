@@ -1,0 +1,7 @@
+extends layout
+
+block content
+  ul
+  each groupChat in groupChats
+    li
+        a(href='/group/' + groupChat.name)= groupChat.name
