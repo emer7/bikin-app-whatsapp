@@ -31,12 +31,15 @@ module.exports = whatsAppClient => {
     ).filter(contact => !contact.isMe);
 
     res.render('participants', {
+      groupName,
       participants: contacts,
     });
   });
 
   router.post('/group/:groupName', async (req, res) => {
-    const { groupName } = req.params;
+    const { params, body } = req;
+    const { groupName } = params;
+    const { text } = body;
 
     const groupChat = groupChatsStore[groupName];
     const { participants } = groupChat;
@@ -53,7 +56,7 @@ module.exports = whatsAppClient => {
       contacts.map(contact => {
         whatsAppClient.sendMessage(
           contact.id._serialized,
-          'Final hard coded message'
+          text.replace('${name}', contact.pushname || contact.name)
         );
       })
     );

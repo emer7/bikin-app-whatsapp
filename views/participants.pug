@@ -1,6 +1,10 @@
 extends layout
 
 block content
+  h4#groupName= groupName
   ul
   each participant in participants
     li= participant.name || participant.pushname
+  textarea#input
+  button#submit(onclick='submit()') Send
+  
